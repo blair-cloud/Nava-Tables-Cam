@@ -1,0 +1,3 @@
+"""
+Camera app initialization
+"""

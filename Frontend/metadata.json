@@ -1,0 +1,8 @@
+
+{
+  "name": "Timetable & Attendance System",
+  "description": "A classic, square-layout timetable management and camera monitoring dashboard designed for educational institutions, featuring student and instructor views and live camera connectivity simulation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
