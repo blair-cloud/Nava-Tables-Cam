@@ -5,105 +5,107 @@ from rest_framework import serializers
 from .models import Camera, CameraCount, Room
 
 
-class RoomSerializer(serializers.ModelSerializer):
-    """Serializer for Room model with latest count information"""
-    latest_count = serializers.SerializerMethodField()
-    last_updated = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Room
-        fields = [
-            'id', 'name', 'camera_ip', 'is_active', 'status',
-            'latest_count', 'last_updated', 'created_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'status']
-    
-    def get_latest_count(self, obj):
-        """Get the most recent people count for this room"""
-        return obj.get_latest_count()
-    
-    def get_last_updated(self, obj):
-        """Get the timestamp of the most recent count"""
-        timestamp = obj.get_latest_count_timestamp()
-        if timestamp:
-            return timestamp.isoformat()
-        return None
-
-
-class RoomCountSerializer(serializers.ModelSerializer):
-    """Serializer for CameraCount filtered by room"""
-    class Meta:
-        model = CameraCount
-        fields = ['id', 'people_count', 'frames_processed', 'inference_time_ms', 'timestamp']
-        read_only_fields = ['id', 'timestamp']
-
-
 class CameraSerializer(serializers.ModelSerializer):
-    """Serializer for Camera model"""
+    """
+    Main serializer for Camera model
+    """
     rtsp_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Camera
         fields = [
-            'id', 'name', 'ip_address', 'port', 'status', 'is_active',
-            'location', 'resolution_width', 'resolution_height', 'fps',
-            'created_at', 'updated_at', 'last_connection', 'rtsp_url'
+            'id', 'name', 'ip_address', 'port', 'username', 'password',
+            'rtsp_path', 'status', 'is_active', 'resolution_width',
+            'resolution_height', 'fps', 'location', 'created_at',
+            'updated_at', 'last_connection', 'rtsp_url'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'last_connection', 'status']
+        read_only_fields = ['created_at', 'updated_at', 'last_connection']
     
     def get_rtsp_url(self, obj):
-        """Return RTSP URL if credentials available"""
-        if obj.username and obj.password:
-            return obj.get_rtsp_url()
-        return f"rtsp://{obj.ip_address}:{obj.port}{obj.rtsp_path}"
+        """Get the RTSP URL from the camera"""
+        return obj.get_rtsp_url()
 
 
 class CameraCountSerializer(serializers.ModelSerializer):
-    """Serializer for CameraCount model"""
+    """
+    Serializer for camera counts (basic)
+    """
     camera_name = serializers.CharField(source='camera.name', read_only=True)
     room_name = serializers.CharField(source='room.name', read_only=True)
     
     class Meta:
         model = CameraCount
         fields = [
-            'id', 'camera', 'camera_name', 'room', 'room_name', 'people_count',
-            'frames_processed', 'inference_time_ms', 'timestamp'
+            'id', 'camera', 'room', 'camera_name', 'room_name',
+            'people_count', 'frames_processed', 'inference_time_ms',
+            'timestamp'
         ]
-        read_only_fields = ['id', 'timestamp']
+        read_only_fields = ['timestamp']
 
 
 class CameraCountDetailSerializer(serializers.ModelSerializer):
-    """Detailed serializer for camera count history"""
+    """
+    Detailed serializer for camera counts with nested objects
+    """
+    camera = CameraSerializer(read_only=True)
+    room = serializers.SerializerMethodField()
+    
     class Meta:
         model = CameraCount
         fields = [
-            'id', 'people_count', 'frames_processed',
-            'inference_time_ms', 'timestamp'
+            'id', 'camera', 'room', 'people_count',
+            'frames_processed', 'inference_time_ms', 'timestamp'
         ]
+        read_only_fields = ['timestamp']
+    
+    def get_room(self, obj):
+        """Get room serialized data"""
+        if obj.room:
+            return RoomSerializer(obj.room).data
+        return None
 
 
 class CameraConnectSerializer(serializers.Serializer):
     """
-    Serializer for camera connection request
-    POST /api/v1/camera/connect/
-    {
-        "camera_id": 1  (or "ip": "192.168.1.100" for new camera)
-    }
+    Serializer for camera connection testing
     """
-    camera_id = serializers.IntegerField(required=False, allow_null=True)
-    ip = serializers.IPAddressField(required=False, allow_blank=True)
-    name = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    port = serializers.IntegerField(default=554, required=False)
-    rtsp_path = serializers.CharField(max_length=255, default='', required=False, allow_blank=True)
+    ip_address = serializers.CharField()
+    port = serializers.IntegerField(required=False, default=554)
+    username = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(required=False, allow_blank=True)
+    rtsp_path = serializers.CharField(required=False, allow_blank=True)
+
+
+class RoomSerializer(serializers.ModelSerializer):
+    """
+    Main serializer for Room model
+    """
+    latest_count = serializers.SerializerMethodField()
+    latest_count_timestamp = serializers.SerializerMethodField()
     
-    def validate(self, data):
-        """Validate that either camera_id or ip is provided"""
-        camera_id = data.get('camera_id')
-        ip = data.get('ip')
-        
-        if not camera_id and not ip:
-            raise serializers.ValidationError(
-                'Either camera_id or ip must be provided'
-            )
-        
-        return data
+    class Meta:
+        model = Room
+        fields = [
+            'id', 'name', 'camera_ip', 'is_active', 'status',
+            'created_at', 'updated_at', 'last_updated',
+            'latest_count', 'latest_count_timestamp'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_latest_count(self, obj):
+        """Get the latest people count for the room"""
+        return obj.get_latest_count()
+    
+    def get_latest_count_timestamp(self, obj):
+        """Get the timestamp of the latest count"""
+        return obj.get_latest_count_timestamp()
+
+
+class RoomCountSerializer(serializers.ModelSerializer):
+    """
+    Serializer for room counts (recent counts for a room)
+    """
+    class Meta:
+        model = CameraCount
+        fields = ['id', 'people_count', 'frames_processed', 'inference_time_ms', 'timestamp']
+        read_only_fields = ['timestamp']

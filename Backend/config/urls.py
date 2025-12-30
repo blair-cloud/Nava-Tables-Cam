@@ -38,12 +38,15 @@ def api_root(request):
         'version': '1.0.0',
         'endpoints': {
             'timetable': {
+                'all_timetable': 'GET /api/v1/timetable/',
+                'by_term': 'GET /api/v1/timetable/by-term/?term=Term_1_AY_2025/2026_Timetable',
+                'by_section': 'GET /api/v1/timetable/by-section/?term=Term_1_AY_2025/2026_Timetable&section=BAPM_2023_Section_A',
+                'student_timetable': 'GET /api/v1/timetable/student/?term=Term_1_AY_2025/2026_Timetable&section=BAPM_2023_Section_A',
+                'instructor_timetable': 'GET /api/v1/timetable/instructor/?instructor_name=Dieudonne, U.',
                 'cohorts': 'GET /api/v1/cohorts/',
                 'sections': 'GET /api/v1/sections/?cohort_id=',
                 'instructors': 'GET /api/v1/instructors/',
                 'courses': 'GET /api/v1/courses/',
-                'student_timetable': 'GET /api/v1/timetable/student/?cohort_id=&section_id=',
-                'instructor_timetable': 'GET /api/v1/timetable/instructor/?instructor_id=',
             },
             'camera': {
                 'connect': 'POST /api/v1/camera/connect/',
